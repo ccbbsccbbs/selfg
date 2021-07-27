@@ -111,6 +111,8 @@ const Sg = (function () {
         this.worldScale = V2(1, 1);
         this.worldCenterPos = V2(0, 0);
         this.worldOpacity = 1;
+        this.onEnter = null; //function
+        this.onLeave = null; //function
     }
 
     Stage.prototype = {
@@ -147,6 +149,8 @@ const Sg = (function () {
         this.x = x;
         this.y = y;
     }
+
+    let _hasNodeChanged = false;
 
     function _Sg() {
         this._cvs = null;
@@ -227,18 +231,7 @@ const Sg = (function () {
             this._ctx.strokeStyle = 'black';
             this._ctx.fillStyle = 'white';
         },
-        toggleNodeTree(isShow_) {
-            nodeTree.style.display = isShow_ ? 'inline_block' : 'none';
-        },
-        addKeyboardEventCb(cb) {
-            if (typeof cb === 'function') {
-                this._keyboardEventCbArr.push(cb);
-            }
-        },
-        renderNodeTree() {
-            nodeTree.innerText = '';
-            this._setNodeTree(this._curStage, nodeTree);
-        },
+
         _setNodeTree(node, el) {
             try {
                 node.children.forEach(s => {
@@ -253,12 +246,7 @@ const Sg = (function () {
             }
 
         },
-        getCurStage() {
-            return this._curStage;
-        },
-        preventClickEvent() {
-            this._canBubbleEvent = false;
-        },
+
 
         _getClickNode(e, parent, arr) {
             if (!parent) return;
@@ -286,15 +274,43 @@ const Sg = (function () {
                 }
             }
         },
-
         _initBorder() {
             this._cvs.style.border = '1px solid #333333';
             return this;
         },
         _setCurStage(stage_) {
+            if (this._curStage) {
+                this._curStage.children.length = 0;
+                if (typeof this._curStage.onLeave === 'function') {
+                    this._curStage.onLeave();
+                }
+            }
+
             this._curStage = stage_;
+            if (typeof stage_.onEnter === 'function') {
+                stage_.onEnter();
+            }
+
             this._cvs.width = stage_.width;
             this._cvs.height = stage_.height;
+        },
+        toggleNodeTree(isShow_) {
+            nodeTree.style.display = isShow_ ? 'inline_block' : 'none';
+        },
+        addKeyboardEventCb(cb) {
+            if (typeof cb === 'function') {
+                this._keyboardEventCbArr.push(cb);
+            }
+        },
+        renderNodeTree() {
+            nodeTree.innerText = '';
+            this._setNodeTree(this._curStage, nodeTree);
+        },
+        getCurStage() {
+            return this._curStage;
+        },
+        preventClickEvent() {
+            this._canBubbleEvent = false;
         },
         getCTX() {
             return this._ctx;
@@ -395,6 +411,8 @@ const Sg = (function () {
             requestAnimationFrame(dt => this._update(dt));
         },
         _rendering() {
+            if (!_hasNodeChanged) return this;
+            _hasNodeChanged = false;
             if (!this._curStage) return this;
             this._ctx.fillStyle = 'white';
             this._ctx.clearRect(0, 0, this._curStage.width, this._curStage.height);
@@ -475,6 +493,7 @@ const Sg = (function () {
             }
         },
         set(target, key, value) {
+            _hasNodeChanged = true;
             switch (key) {
                 case 'x':
                     target.pos.x = value;
@@ -514,6 +533,7 @@ const Sg = (function () {
             return PorxyNode.get(target, key);
         },
         set(target, key, value) {
+            _hasNodeChanged = true;
             switch (key) {
                 case 'string':
                     _sg._ctx.font = target.font;
